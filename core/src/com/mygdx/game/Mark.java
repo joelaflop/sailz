@@ -10,8 +10,8 @@ public class Mark extends CourseItem {
     }
 
 
-    public float getRadius() {
-        return img.getHeight()/2;
-    }
+    //public float getRadius() {
+       // return img.getHeight()/2;
+    //}
 
 }

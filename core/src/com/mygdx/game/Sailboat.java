@@ -13,7 +13,7 @@ public class Sailboat extends CourseItem {
 
     private static Polar420 polar420;
     //private static SailPolar sailPolar;
-    private static int sailBoatCount = 0;
+
     private float angle, omega, alpha, newAngle;
     private float rudderAngle;
     private float velocity, acceleration, newVelocity;
@@ -23,17 +23,17 @@ public class Sailboat extends CourseItem {
     private int penalties, lastFoul, lastTrim, lastJibe;
     private Map<Sailboat, Integer> overlappedBoats;
     private Set<Sailboat> leewardBoats;
-    private Map<String, Vector2> points;
-    private Map<String, Vector2> windShadow;
-    private final int id;
+    private Vector2 bowtip, nearBowR, nearBowL, midRight, midLeft, starboardBeam, portBeam, rightCorner, leftCorner, mastStep, endBoom, idealEndBoom, mastStepDown, endBoomDown, mastStepDownback, endBoomDownback, leebowBackMast, leebowBackBoom;
+    private int id;
     private String name;
+    TextureData t;
 
-    public Sailboat(String n) {
+    Sailboat(int i, String n, TextureData t) {
         super(3000, -2500, n);
         this.name = n;
-        id = sailBoatCount;
-        sailBoatCount++;
-        adjustPosition(1500*id,0);
+        id = (int) (Math.random()*1000);// sailBoatCount;
+        //sailBoatCount++;
+        adjustPosition(1500 + id,0);
         luffing = true;
         angle = 45;
         newAngle = 45;
@@ -45,54 +45,47 @@ public class Sailboat extends CourseItem {
         lastFoul = 0;
         overlappedBoats = new HashMap<Sailboat, Integer>();
         leewardBoats = new HashSet<Sailboat>();
+        this.t = t;
 
-        points = new HashMap<String, Vector2>();
-        windShadow = new HashMap<String, Vector2>();
+        //points = new HashMap<String, Vector2>();
+        //windShadow = new HashMap<String, Vector2>();
         updatePoints();
     }
 
-    public void update(String n, float x, float y, float angle, float sailTrim, float rudderAngle, int id) {
 
-        //this.id = id;
+    void update(String n, float x, float y, float angle, float sailTrim, float rudderAngle, int id, boolean star) {
+
+        this.id = id;
         setPosition(x,y);
         luffing = true;
         this.angle = angle;
         this.sailTrim = sailTrim;
-        //epenalties = 0;
+        starboard = star;
+        //penalties = 0;
         //lastFoul = 0;
-        //overlappedBoats = new HashMap<Sailboat, Integer>();
-        //leewardBoats = new HashSet<Sailboat>();
 
-        points = new HashMap<String, Vector2>();
-        windShadow = new HashMap<String, Vector2>();
+        //points = new HashMap<String, Vector2>();
+        //windShadow = new HashMap<String, Vector2>();
         updatePoints();
     }
 
-    public void move(double wind, double current) {
+    void move(double wind, double current) {
         double rad = Math.toRadians(getAngle());
         adjustPosition((float) (-velocity * Math.sin(rad)), (float) (-velocity * -Math.cos(rad)));
         updatePoints();
         //idealSailTrim();
-        /*
-        System.out.println("id:"+id +"  angle: " + getAngle() + "  velocity: " + velocity + "/" + newVelocity
-                + "(" + velocity * Math.sin(rad) + "," + velocity * Math.cos(rad)
-                + ")  acceleration: " + acceleration + "  starboard:" + starboard
+
+        System.out.println("1: id:"+id +"  angle: " + getAngle() + "  velocity: " + velocity + "/" + newVelocity
+                /*+ "(" + velocity * Math.sin(rad) + "," + velocity * Math.cos(rad)
+                + ")*/+"  acceleration: " + acceleration + "  starboard:" + starboard
                 + "  properCourse:" + properCourse + "  luffing:" + luffing + "  slowing:" + slowing
-                + "  rudder: "+rudderAngle);
-                */
-        if (starboard) {
+                + "  Manuevering:"+isManuvering()+ "  Skulling:"+skulling + "  rudder: "+rudderAngle);
+
             if (rudderAngle > 0) {
                 headUp(rudderAngle / 90);
             } else if (rudderAngle < 0) {
                 headDown(-rudderAngle / 90);
             }
-        } else {
-            if (rudderAngle > 0) {
-                headUp(rudderAngle / 90);
-            } else if (rudderAngle < 0) {
-                headDown(-rudderAngle / 90);
-            }
-        }
         if (tacking) {
             if ((getAngle() > newAngle && omega > 0) || (getAngle() < newAngle && omega < 0)) {
                 tacking = false;
@@ -151,32 +144,28 @@ public class Sailboat extends CourseItem {
                 if (skulling) {
                         newVelocity = speedFromWind() / 3f;
                 } else {
-                        newVelocity = speedFromWind();
+                        newVelocity = speedFromWind() / Math.max(1f, Math.abs(rudderAngle)/15f);
                 }
             }
-            if (properCourse) {
-                getToProperCourse();
-            }
 
         }
-        if (!skulling) {
-            //newVelocity -= (Math.abs(rudderAngle) / 30);
-            if (newVelocity < 0) {
-                //newVelocity = 0;
-            }
-        }
+        System.out.println("2: id:"+id +"  angle: " + getAngle() + "  velocity: " + velocity + "/" + newVelocity
+                /*+ "(" + velocity * Math.sin(rad) + "," + velocity * Math.cos(rad)
+                + ")*/+"  acceleration: " + acceleration + "  starboard:" + starboard
+                + "  properCourse:" + properCourse + "  luffing:" + luffing + "  slowing:" + slowing
+                + "  Manuevering:"+isManuvering()+ "  Skulling:"+skulling + "  rudder: "+rudderAngle);
+
         accelerate();
-        skulling = false;
     }
 
-    public void accelerate() {
+    private void accelerate() {
         if (!isManuvering() && !skulling) {
             if (velocity < newVelocity) {
                 acceleration = speedFromWind() / 800f;
             } else if (velocity > newVelocity) {
                 acceleration = (20 - speedFromWind()) / -700f;
             }
-        } else {
+        } else { //skulling or tacking/jibing/spinning
             if (velocity < newVelocity) {
                 acceleration = Math.max(0.01f, speedFromWind() / 1000f);
             } else if (velocity > newVelocity) {
@@ -193,7 +182,7 @@ public class Sailboat extends CourseItem {
         velocity += acceleration;
     }
 
-    public void headDown(float o) {
+    private void headDown(float o) {
         if (!isManuvering()) {
             properCourse = false;
             if (starboard && getAngle() < 200) {
@@ -220,7 +209,7 @@ public class Sailboat extends CourseItem {
         }
     }
 
-    public void headUp(float o) {
+    private void headUp(float o) {
         if (!isManuvering()) {
             properCourse = false;
             if (getAngle() >= 0 && getAngle() < 203 && starboard) {
@@ -245,7 +234,7 @@ public class Sailboat extends CourseItem {
                 }
             }
         } else {
-            if (tacking && ((getAngle() > 10) && (getAngle() < 350))) {
+            if (tacking && ((getAngle() > 20) && (getAngle() < 340))) {
                 tacking = false;
                 newAngle = angle;
                 omega = 0;
@@ -257,7 +246,7 @@ public class Sailboat extends CourseItem {
         }
     }
 
-    public void getToProperCourse() {
+    private void getToProperCourse() {
         if (!luffing && !skulling && !slowing && !spinning) {
             if (getAngle() > 90 && getAngle() < 180) {
                 newAngle = 160;
@@ -282,10 +271,9 @@ public class Sailboat extends CourseItem {
         }
     }
 
-    public void adjustRudder(float a) {
+    void adjustRudder(float a) {
         rudderAngle = a;
         properCourse = false;
-        skulling = true;
         if (rudderAngle > 90) {
             rudderAngle = 90;
         } else if (rudderAngle < -90) {
@@ -293,16 +281,21 @@ public class Sailboat extends CourseItem {
         }
     }
 
-    public void clearRudder() {
+    void clearRudder() {
         rudderAngle = 0;
+        skulling = false;
     }
 
-    public void adjustAngle(double a) {
+    private void adjustAngle(double a) {
         angle += a * (Math.abs(velocity) + .15f) * .16f;
-        skulling = true;
+        if(Math.abs(a) > .5){
+            skulling = true;
+        } else {
+            skulling = false;
+        }
     }
 
-    public float getAngle() {
+    float getAngle() {
         if (angle >= 0) {
             angle = (angle % 360);
         } else {
@@ -311,14 +304,14 @@ public class Sailboat extends CourseItem {
         return angle;
     }
 
-    public float angleFromWind() {
+    private float angleFromWind() {
         if (starboard)
             return getAngle();
         else
             return 360 - getAngle();
     }
 
-    public void trim() {
+    void trim() {
         luffing = false;
         sailTrim -= .3;
         if (sailTrim < 0) {
@@ -326,7 +319,7 @@ public class Sailboat extends CourseItem {
         }
     }
 
-    public void ease() {
+    void ease() {
         luffing = false;
         sailTrim += .3;
         if (sailTrim > 90) {
@@ -334,11 +327,11 @@ public class Sailboat extends CourseItem {
         }
     }
 
-    public float idealSailTrim() {
+    private float idealSailTrim() {
         return angleFromWind() / 2;
     }
 
-    public float sailAngle() {
+    private float sailAngle() {
         float sailAng = angleFromWind() - sailTrim;
         if(sailAng > 180){
             return 360 - sailAng;
@@ -347,9 +340,7 @@ public class Sailboat extends CourseItem {
     }
 
     private float speedFromWind() {
-        //ang = Math.round(ang);
-        float speed;
-        speed = polar420.getSpeed(angleFromWind());
+        float speed = polar420.getSpeed(angleFromWind());
         speed *= 10;
         float idealTrim = idealSailTrim();
         float sailAngle = sailAngle();
@@ -367,7 +358,7 @@ public class Sailboat extends CourseItem {
         return speed;
     }
 
-    public void tack(boolean starb) {
+    private void tack(boolean starb) {
         System.out.println("TACK");
         if (!isManuvering()) {
             if (starb) {
@@ -388,7 +379,7 @@ public class Sailboat extends CourseItem {
 
     }
 
-    public void jibe(int time) {
+    void jibe(int time) {
         if (time - lastJibe > 9) {
             lastJibe = time;
             if (!isManuvering()) {
@@ -420,7 +411,7 @@ public class Sailboat extends CourseItem {
         }
     }
 
-    public void spin(boolean t) {
+    void spin(boolean t) {
         if (!isManuvering()) {
             newAngle = getAngle();
             if (starboard)
@@ -440,13 +431,15 @@ public class Sailboat extends CourseItem {
         // System.out.println(" angle: " + getAngle() + " " + newAngle);
     }
 
-    public boolean isManuvering() {
+    boolean isManuvering() {
         return tacking || jibing || spinning;
     }
 
-    public boolean properCourse(){ return !luffing && properCourse; }
+    boolean properCourse(){
+        //properCourse = true;
+        return !luffing && (Math.abs(angleFromWind() -45)<5 || Math.abs(angleFromWind() -260)<5); }
 
-    public void luff(int time) {
+    void luff(int time) {
         // System.out.println(getAngle() +" " +velocity +" "+velocity/2);
         if (time - lastTrim > 9) {
             lastTrim = time;
@@ -458,41 +451,36 @@ public class Sailboat extends CourseItem {
         }
     }
 
-    public void penalize(int turns, int time) {
+    void penalize(int turns, int time) {
         if (time - lastFoul > 500) {
             penalties += turns;
             lastFoul = time;
         }
     }
 
-    public void overlap(Sailboat b, int time) {
-        if (Math.abs(getX() - b.getX()) > getHeight() * 3 || Math.abs(getX() - b.getX()) > getHeight() * 3)
+    void overlap(Sailboat b, int time) {
+        if (Math.abs(getX() - b.getX()) > t.sailBoatWidth() * 5 || Math.abs(getX() - b.getX()) > t.sailBoatHeight() * 5){
+            overlappedBoats.remove(b);
             return;
-
-        Vector2 rightCorner = getPoint("rightCorner");
-        Vector2 leftCorner = getPoint("leftCorner");
-        Vector2 bowtip = getPoint("bowtip");
+        }
         float sternSlope;
         if (rightCorner.x != leftCorner.x)
             sternSlope = (rightCorner.y - leftCorner.y) / (rightCorner.x - leftCorner.x);
         else
             sternSlope = Integer.MAX_VALUE;
 
-        Vector2 brightCorner = b.getPoint("rightCorner");
-        Vector2 bleftCorner = b.getPoint("leftCorner");
-        Vector2 bbowtip = b.getPoint("bowtip");
         float bsternSlope;
-        if (brightCorner.x != bleftCorner.x)
-            bsternSlope = (brightCorner.y - bleftCorner.y) / (brightCorner.x - bleftCorner.x);
+        if (b.rightCorner.x != b.leftCorner.x)
+            bsternSlope = (b.rightCorner.y - b.leftCorner.y) / (b.rightCorner.x - b.leftCorner.x);
         else
             bsternSlope = Integer.MAX_VALUE;
 
-        boolean bowInfrontBstern = (bsternSlope * (bowtip.x - brightCorner.x) + brightCorner.y
+        boolean bowInfrontBstern = (bsternSlope * (bowtip.x - b.rightCorner.x) + b.rightCorner.y
                 - bowtip.y) >= 0;
-        boolean bbowInfrontstern = (sternSlope * (bbowtip.x - rightCorner.x) + rightCorner.y
-                - bbowtip.y) >= 0;
-        boolean bbowDirection = (bsternSlope * (bbowtip.x - brightCorner.x) + brightCorner.y
-                - bbowtip.y) >= 0;
+        boolean bbowInfrontstern = (sternSlope * (b.bowtip.x - rightCorner.x) + rightCorner.y
+                - b.bowtip.y) >= 0;
+        boolean bbowDirection = (bsternSlope * (b.bowtip.x - b.rightCorner.x) + b.rightCorner.y
+                - b.bowtip.y) >= 0;
         boolean bowDirection = (sternSlope * (bowtip.x - rightCorner.x) + rightCorner.y
                 - bowtip.y) >= 0;
 
@@ -507,9 +495,12 @@ public class Sailboat extends CourseItem {
             overlappedBoats.remove(b);
     }
 
-    public void windward(Sailboat b) {
-        if (Math.abs(getX() - b.getX()) > getHeight() * 3 || Math.abs(getX() - b.getX()) > getHeight() * 3)
+    void windward(Sailboat b) {
+        if (Math.abs(getX() - b.getX()) > t.sailBoatWidth() * 5 || Math.abs(getX() - b.getX()) > t.sailBoatHeight() * 5){
+            leewardBoats.remove(b);
             return;
+        }
+
         double a = Math.toDegrees(Math.atan2(((double) getY() - (double) b.getY()),
                 ((double) getX() - (double) b.getX())));
         //System.out.println(b.id +"   "+a + "   " + getAngle() + "   ");
@@ -528,19 +519,10 @@ public class Sailboat extends CourseItem {
         }
     }
 
-
-    public boolean hitBoat(CourseItem b) {
-        if (Math.abs(getX() - b.getX()) > getHeight() * 2 || Math.abs(getX() - b.getX()) > getHeight() * 2)
+    boolean hitBoat(CourseItem b) {
+        if (Math.abs(getX() - b.getX()) > t.sailBoatWidth() * 2 || Math.abs(getX() - b.getX()) > t.sailBoatHeight() * 2)
             return false;
-        Vector2 bowtip = getPoint("bowtip");
-        Vector2 nearBowR = getPoint("nearBowR");
-        Vector2 nearBowL = getPoint("nearBowL");
-        Vector2 midRight = getPoint("midRight");
-        Vector2 midLeft = getPoint("midLeft");
-        Vector2 starboardBeam = getPoint("starboardBeam");
-        Vector2 portBeam = getPoint("portBeam");
-        Vector2 rightCorner = getPoint("rightCorner");
-        Vector2 leftCorner = getPoint("leftCorner");
+
 
         Vector2 bbowtip;
         Vector2 bnearBowR;
@@ -554,15 +536,15 @@ public class Sailboat extends CourseItem {
 
         if (b instanceof Sailboat) {
             Sailboat bb = (Sailboat) b;
-            bbowtip = bb.getPoint("bowtip");
-            bnearBowR = bb.getPoint("nearBowR");
-            bnearBowL = bb.getPoint("nearBowL");
-            bmidRight = bb.getPoint("midRight");
-            bmidLeft = bb.getPoint("midLeft");
-            bstarboardBeam = bb.getPoint("starboardBeam");
-            bportBeam = bb.getPoint("portBeam");
-            brightCorner = bb.getPoint("rightCorner");
-            bleftCorner = bb.getPoint("leftCorner");
+            bbowtip = bb.bowtip;
+            bnearBowR = bb.nearBowR;
+            bnearBowL = bb.nearBowL;
+            bmidRight = bb.midRight;
+            bmidLeft = bb.midLeft;
+            bstarboardBeam = bb.starboardBeam;
+            bportBeam = bb.portBeam;
+            brightCorner = bb.rightCorner;
+            bleftCorner = bb.leftCorner;
         } else {
             Vector2 c = new Vector2(b.getX(), b.getY());
             bbowtip = new Vector2(c.x, c.y + 520);
@@ -668,30 +650,22 @@ public class Sailboat extends CourseItem {
          */
     }
 
-    public boolean hitMark(Mark m) {
-        if (Math.abs(getX() - m.getX()) > getHeight() || Math.abs(getX() - m.getX()) > getHeight())
+    boolean hitMark(Mark m) {
+        if (Math.abs(getX() - m.getX()) > t.sailBoatWidth() || Math.abs(getX() - m.getX()) > t.sailBoatHeight())
             return false;
 
-        Vector2 bowtip = getPoint("bowtip");
-        Vector2 nearBowR = getPoint("nearBowR");
-        Vector2 nearBowL = getPoint("nearBowL");
-        Vector2 midRight = getPoint("midRight");
-        Vector2 midLeft = getPoint("midLeft");
-        Vector2 starboardBeam = getPoint("starboardBeam");
-        Vector2 portBeam = getPoint("portBeam");
-        Vector2 rightCorner = getPoint("rightCorner");
-        Vector2 leftCorner = getPoint("leftCorner");
+        float r = t.markHeight()/2;
 
-        return (Math.abs(m.getX() - bowtip.x) - m.getRadius() < 0 && Math.abs(m.getY() - bowtip.y) - m.getRadius() < 0)
-                || (Math.abs(m.getX() - starboardBeam.x) - m.getRadius() < -4 && Math.abs(m.getY() - starboardBeam.y) - m.getRadius() < -1)
-                || (Math.abs(m.getX() - portBeam.x) - m.getRadius() < -1 && Math.abs(m.getY() - portBeam.y) - m.getRadius() < -1)
-                || (Math.abs(m.getX() - bowtip.x) - m.getRadius() < -1 && Math.abs(m.getY() - bowtip.y) - m.getRadius() < -1)
-                || (Math.abs(m.getX() - nearBowR.x) - m.getRadius() < -1 && Math.abs(m.getY() - nearBowR.y) - m.getRadius() < -1)
-                || (Math.abs(m.getX() - nearBowL.x) - m.getRadius() < -1 && Math.abs(m.getY() - nearBowL.y) - m.getRadius() < -1)
-                || (Math.abs(m.getX() - midRight.x) - m.getRadius() < -1 && Math.abs(m.getY() - midRight.y) - m.getRadius() < -1)
-                || (Math.abs(m.getX() - midLeft.x) - m.getRadius() < -1 && Math.abs(m.getY() - midLeft.y) - m.getRadius() < -1)
-                || (Math.abs(m.getX() - rightCorner.x) - m.getRadius() < -1 && Math.abs(m.getY() - rightCorner.y) - m.getRadius() < -1)
-                || (Math.abs(m.getX() - leftCorner.x) - m.getRadius() < -1 && Math.abs(m.getY() - leftCorner.y) - m.getRadius() < -1);
+        return (Math.abs(m.getX() - bowtip.x) - r < 0 && Math.abs(m.getY() - bowtip.y) - r < 0)
+                || (Math.abs(m.getX() - starboardBeam.x) - r < -4 && Math.abs(m.getY() - starboardBeam.y) - r < -1)
+                || (Math.abs(m.getX() - portBeam.x) - r < -1 && Math.abs(m.getY() - portBeam.y) - r < -1)
+                || (Math.abs(m.getX() - bowtip.x) - r < -1 && Math.abs(m.getY() - bowtip.y) - r < -1)
+                || (Math.abs(m.getX() - nearBowR.x) - r < -1 && Math.abs(m.getY() - nearBowR.y) - r < -1)
+                || (Math.abs(m.getX() - nearBowL.x) - r < -1 && Math.abs(m.getY() - nearBowL.y) - r < -1)
+                || (Math.abs(m.getX() - midRight.x) - r < -1 && Math.abs(m.getY() - midRight.y) - r < -1)
+                || (Math.abs(m.getX() - midLeft.x) - r < -1 && Math.abs(m.getY() - midLeft.y) - r < -1)
+                || (Math.abs(m.getX() - rightCorner.x) - r < -1 && Math.abs(m.getY() - rightCorner.y) - r < -1)
+                || (Math.abs(m.getX() - leftCorner.x) -r < -1 && Math.abs(m.getY() - leftCorner.y) - r < -1);
     }
 
     private boolean intersectSegments(Vector2 a, Vector2 b, Vector2 c, Vector2 d) {
@@ -709,89 +683,74 @@ public class Sailboat extends CourseItem {
         }
     }
 
-    public boolean starboard() {
-        return starboard;
-    }
+    boolean starboard() { return starboard; }
 
-    public boolean isWindward(Sailboat b) {
-        return (leewardBoats.contains(b));
-    }
+    boolean isWindward(Sailboat b) { return (leewardBoats.contains(b)); }
 
-    public int penalties() {
+    int penalties() {
         return penalties;
     }
 
-    public int overlaps() {
+    int overlaps() {
         return overlappedBoats.size();
     }
 
-    public Vector2 getPoint(String n) {
-        return points.get(n);
-    }
+    int id(){ return id; }
 
-    public int id(){ return id; }
+    private void updatePoints() {
+        //points.clear();
+        bowtip =  getRotatedPoint(0, -618);
+        nearBowR = getRotatedPoint(100, -369);
+        nearBowL = getRotatedPoint(-100, -369);
+        midRight = getRotatedPoint(155, -127);
+        midLeft = getRotatedPoint(-155, -127);
+        starboardBeam = getRotatedPoint(180, 194);
+        portBeam = getRotatedPoint(-180, 194);
+        rightCorner = getRotatedPoint(136, 617);
+        leftCorner = getRotatedPoint(-136, 617);
+        mastStep = getRotatedPoint(0, -400);
+        //Vector2 mastStep = windShadow.get("mastStep");
 
-
-    public void updatePoints() {
-        points.clear();
-        points.put("bowtip", getRotatedPoint(0, -618));
-        points.put("nearBowR", getRotatedPoint(100, -369));
-        points.put("nearBowL", getRotatedPoint(-100, -369));
-        points.put("midRight", getRotatedPoint(155, -127));
-        points.put("midLeft", getRotatedPoint(-155, -127));
-        points.put("starboardBeam", getRotatedPoint(180, 194));
-        points.put("portBeam", getRotatedPoint(-180, 194));
-        points.put("rightCorner", getRotatedPoint(136, 617));
-        points.put("leftCorner", getRotatedPoint(-136, 617));
-        windShadow.put("mastStep", getRotatedPoint(0, -400));
-        Vector2 mastStep = windShadow.get("mastStep");
-        if (starboard) {
-            windShadow.put("idealEndBoom",
-                    new Vector2(mastStep.x + (float) (1000) * (float) Math.sin(Math.toRadians(angleFromWind() / 2)),
-                            mastStep.y - (1000) * (float) Math.cos(Math.toRadians(angleFromWind() / 2))));
-            if(luffing) {
-                windShadow.put("endBoom",
-                        new Vector2(mastStep.x, mastStep.y-1000));
-            } else{
-                windShadow.put("endBoom",
-                        new Vector2(mastStep.x - 1000 * (float) Math.cos(Math.toRadians(90 - sailTrim + angleFromWind())),
-                                mastStep.y - 1000 * (float) Math.sin(Math.toRadians(90 - sailTrim + angleFromWind()))));
-            }
-        } else {
-            windShadow.put("idealEndBoom",
-                    new Vector2(mastStep.x - (float) (1000) * (float) Math.sin(Math.toRadians(angleFromWind() / 2)),
-                            mastStep.y - (float) (1000) * (float) Math.cos(Math.toRadians(angleFromWind() / 2))));
-            if(luffing) {
-                windShadow.put("endBoom",
-                        new Vector2(mastStep.x, mastStep.y-1000));
+            if (starboard) {
+                idealEndBoom =
+                        new Vector2(mastStep.x + (float) (1000) * (float) Math.sin(Math.toRadians(angleFromWind() / 2)),
+                                mastStep.y - (1000) * (float) Math.cos(Math.toRadians(angleFromWind() / 2)));
+                if (luffing) {
+                    endBoom =
+                            new Vector2(mastStep.x, mastStep.y - 1000);
+                } else {
+                    endBoom =
+                            new Vector2(mastStep.x - 1000 * (float) Math.cos(Math.toRadians(90 - sailTrim + angleFromWind())),
+                                    mastStep.y - 1000 * (float) Math.sin(Math.toRadians(90 - sailTrim + angleFromWind())));
+                }
             } else {
-                windShadow.put("endBoom",
-                        new Vector2(mastStep.x + 1000 * (float) Math.cos(Math.toRadians(90 - sailTrim + angleFromWind())),
-                                mastStep.y - 1000 * (float) Math.sin(Math.toRadians(90 - sailTrim + angleFromWind()))));
+                idealEndBoom=
+                        new Vector2(mastStep.x - (float) (1000) * (float) Math.sin(Math.toRadians(angleFromWind() / 2)),
+                                mastStep.y - (float) (1000) * (float) Math.cos(Math.toRadians(angleFromWind() / 2)));
+                if (luffing) {
+                    endBoom=
+                            new Vector2(mastStep.x, mastStep.y - 1000);
+                } else {
+                    endBoom=
+                            new Vector2(mastStep.x + 1000 * (float) Math.cos(Math.toRadians(90 - sailTrim + angleFromWind())),
+                                    mastStep.y - 1000 * (float) Math.sin(Math.toRadians(90 - sailTrim + angleFromWind())));
+                }
             }
-        }
+
 
     }
 
-    public Vector2 getRotatedPoint(float x, float y) {
+    Vector2 getRotatedPoint(float x, float y) {
         Vector2 v = new Vector2(
                 (int) (Math.cos(Math.toRadians(180 + getAngle())) * (x)
-                        - (y) * Math.sin(Math.toRadians(180 + getAngle())) + getX() + getWidth() / 2),
+                        - (y) * Math.sin(Math.toRadians(180 + getAngle())) + getX() + t.sailBoatWidth() / 2),
                 (int) (Math.sin(Math.toRadians(180 + getAngle())) * (x)
-                        + (y) * Math.cos(Math.toRadians(180 + getAngle()))) + getY() + getHeight() / 2);
+                        + (y) * Math.cos(Math.toRadians(180 + getAngle()))) + getY() + t.sailBoatHeight() / 2);
         return v;
     }
 
     public void drawOutline(ShapeRenderer shapes) {
-        Vector2 bowtip = getPoint("bowtip");
-        Vector2 nearBowR = getPoint("nearBowR");
-        Vector2 nearBowL = getPoint("nearBowL");
-        Vector2 midRight = getPoint("midRight");
-        Vector2 midLeft = getPoint("midLeft");
-        Vector2 starboardBeam = getPoint("starboardBeam");
-        Vector2 portBeam = getPoint("portBeam");
-        Vector2 rightCorner = getPoint("rightCorner");
-        Vector2 leftCorner = getPoint("leftCorner");
+
         shapes.line(bowtip.x, bowtip.y, nearBowR.x, nearBowR.y);
         shapes.line(bowtip.x, bowtip.y, nearBowL.x, nearBowL.y);
         shapes.line(midRight.x, midRight.y, nearBowR.x, nearBowR.y);
@@ -803,68 +762,60 @@ public class Sailboat extends CourseItem {
         shapes.line(leftCorner.x, leftCorner.y, rightCorner.x, rightCorner.y);
     }
 
-    public void drawWindshadow(ShapeRenderer shapes) {
+    void drawWindshadow(ShapeRenderer shapes) {
         if (!luffing) {
-            Vector2 a = new Vector2(windShadow.get("mastStep").x, windShadow.get("mastStep").y - 3000);
-            Vector2 b = new Vector2(windShadow.get("endBoom").x, windShadow.get("endBoom").y - 3000);
-            Vector2 c, d;
+            mastStepDown = new Vector2(mastStep.x, mastStep.y - 3000);
+            endBoomDown = new Vector2(endBoom.x, endBoom.y - 3000);
             if (starboard) {
-                c = new Vector2(windShadow.get("mastStep").x + 2000, windShadow.get("mastStep").y - 3000);
-                d = new Vector2(windShadow.get("endBoom").x + 2000, windShadow.get("endBoom").y - 3000);
+                mastStepDownback = new Vector2(endBoom.x + 2000, mastStep.y - 3000);
+                endBoomDownback = new Vector2(endBoom.x + 2000, endBoom.y - 3000);
 
             } else {
-                c = new Vector2(windShadow.get("mastStep").x - 2000, windShadow.get("mastStep").y - 3000);
-                d = new Vector2(windShadow.get("endBoom").x - 2000, windShadow.get("endBoom").y - 3000);
+                mastStepDownback = new Vector2(mastStep.x - 2000, mastStep.y - 3000);
+                endBoomDownback = new Vector2(endBoom.x - 2000, endBoom.y - 3000);
 
             }
-            windShadow.put("mastStepDown", a);
-            windShadow.put("endBoomDown", b);
-            windShadow.put("mastStepDownback", c);
-            windShadow.put("endBoomDownback", d);
 
             shapes.setColor(com.badlogic.gdx.graphics.Color.GREEN);
             if (getAngle() < 80 || getAngle() > 280) {
-                Vector2 l1, l2;
                 if (starboard) {
-                    l1 = new Vector2(windShadow.get("mastStep").x + 1500, windShadow.get("mastStep").y - 600);
-                    l2 = new Vector2(windShadow.get("endBoom").x + 1000, windShadow.get("endBoom").y - 1000);
+                    leebowBackMast = new Vector2(mastStep.x + 1500, mastStep.y - 600);
+                    leebowBackBoom = new Vector2(endBoom.x + 1000, endBoom.y - 1000);
                 } else {
-                    l1 = new Vector2(windShadow.get("mastStep").x - 1500, windShadow.get("mastStep").y - 600);
-                    l2 = new Vector2(windShadow.get("endBoom").x - 1000, windShadow.get("endBoom").y - 1000);
+                    leebowBackMast = new Vector2(mastStep.x - 1500, mastStep.y - 600);
+                    leebowBackBoom = new Vector2(endBoom.x - 1000, endBoom.y - 1000);
                 }
-                windShadow.put("leebowBackMast", l1);
-                windShadow.put("leebowBackBoom", l2);
+
                 shapes.setColor(com.badlogic.gdx.graphics.Color.GREEN);
-                shapes.line(windShadow.get("mastStep"), l1);
-                shapes.line(l1, l2);
-                shapes.line(windShadow.get("endBoom"), l2);
+                shapes.line(mastStep, leebowBackMast);
+                shapes.line(leebowBackMast, leebowBackBoom);
+                shapes.line(endBoom, leebowBackBoom);
             }
 
-            shapes.setColor(com.badlogic.gdx.graphics.Color.GRAY);
-            shapes.line(windShadow.get("mastStep"), a);
-            shapes.line(a, b);
-            shapes.line(b, d);
-            shapes.line(c, d);
-            shapes.line(c, windShadow.get("endBoom"));
+            shapes.setColor(com.badlogic.gdx.graphics.Color.BLUE);
+            shapes.line(mastStep, mastStepDown);
+            shapes.line(mastStepDown, endBoomDown);
+            shapes.line(endBoomDown, endBoomDownback);
+            //shapes.line(mastStepDownback, leebowBackBoom);
+            shapes.line(mastStepDownback, endBoom);
 
             shapes.setColor(com.badlogic.gdx.graphics.Color.BLACK);
         }
     }
 
-    public void drawSail(ShapeRenderer shapes) {
+    void drawSail(ShapeRenderer shapes) {
         if(shapes == null){
             System.out.println("NULL SHAPES NULL SHAPES NULL SHAPES NULL SHAPES NULL SHAPES NULL SHAPES NULL SHAPES NULL SHAPES ");
         }
-        Vector2 mastStep = windShadow.get("mastStep");
         if(mastStep == null){
             System.out.println("NULL mastStep NULL mastStep NULL mastStep NULL mastStep NULL mastStep NULL mastStep NULL mastStep NULL mastStep ");
+            mastStep = getRotatedPoint(0, -400);
         }
-        Vector2 endBoom = windShadow.get("endBoom");
         if(endBoom == null){
             System.out.println("NULL endBoom NULL endBoom NULL endBoom NULL endBoom NULL endBoom NULL endBoom NULL endBoom NULL endBoom ");
         }
-        Vector2 idealEndBoom = windShadow.get("idealEndBoom");
         shapes.setColor(com.badlogic.gdx.graphics.Color.BLACK);
+        //System.out.println("          SAIL DRAWING" + mastStep +"  "+endBoom);
         shapes.line(mastStep, endBoom);
         shapes.setColor(com.badlogic.gdx.graphics.Color.GREEN);
         shapes.line(mastStep, idealEndBoom);
@@ -920,7 +871,7 @@ public class Sailboat extends CourseItem {
         */
     }
 
-    public JSONObject getArray(){
+    JSONObject getArray(){
         //counter++;
         try {
             JSONObject data = new JSONObject();
@@ -933,6 +884,7 @@ public class Sailboat extends CourseItem {
             data.put("rudderAngle", rudderAngle);
             data.put("width", 300);
             data.put("height", 300);
+            data.put("starboard", starboard);
             //System.out.println(data);
             //if(counter%10==0){
             //    counter=0;
@@ -945,7 +897,7 @@ public class Sailboat extends CourseItem {
 
     }
 
-    public void hud(BitmapFont font, SpriteBatch hud){
+    void hud(BitmapFont font, SpriteBatch hud){
         DecimalFormat df = new DecimalFormat();
         df.setMaximumFractionDigits(3);
         df.setMinimumFractionDigits(3);
@@ -981,7 +933,6 @@ public class Sailboat extends CourseItem {
 
     @Override
     public int hashCode() {
-        return id % 50;
+        return id % 1000;
     }
-
 }

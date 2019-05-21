@@ -158,9 +158,11 @@ public class WarpController {
 		log("onGetLiveRoomInfo: "+liveUsers.length);
 		if(liveUsers!=null){
 			if(liveUsers.length==2){
-				startGame();	
+				startGame();
+				System.out.println("game started");
 			}else{
 				waitForOtherUser();
+				System.out.println("waiting");
 			}
 		}else{
 			warpClient.disconnect();
@@ -182,10 +184,11 @@ public class WarpController {
 	}
 	
 	public void onGameUpdateReceived(String message){
-//		log("onMoveUpdateReceived: message"+ message );
+		log("onMoveUpdateReceived: message"+ message );
 		String userName = message.substring(0, message.indexOf("#@"));
 		String data = message.substring(message.indexOf("#@")+2, message.length());
 		if(!localUser.equals(userName)){
+			//System.out.println("actually udpating game for !equal users");
 			warpListener.onGameUpdateReceived(data);
 		}
 	}

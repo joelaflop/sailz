@@ -14,13 +14,15 @@ public class Course {
 
     private double windSpeed, currentSpeed;
     private static ArrayList<Sailboat> boats;
+    private static int sailBoatCount = 0;
     private ArrayList<Mark> marks;
     private ArrayList<Committee> committees;
     private Sailboat localBoat, boat1;
     private float boatLength;
-    int tickcnt;
+    TextureData t;
+    private int tickcnt;
 
-    public Course(int w, int c){
+    public Course(int w, int c, TextureData t){
 
         windSpeed = w;
         currentSpeed = c;
@@ -29,13 +31,16 @@ public class Course {
         marks = new ArrayList<Mark>();
         committees= new ArrayList<Committee>();
 
-        localBoat = new Sailboat("g1");
+        localBoat = new Sailboat(sailBoatCount, "g1", t);
+        sailBoatCount++;
         boats.add(localBoat);
+
+        this.t = t;
 
         //boat1 = new Sailboat("o1");
         //boats.add(boat1);
 
-        boatLength = localBoat.getHeight();
+        boatLength = t.sailBoatHeight;
         marks.add(new Mark(-6000, 0, "pin", boatLength));
         committees.add(new Committee(0, 0, "start", boatLength));
 
@@ -45,7 +50,6 @@ public class Course {
         marks.add(new Mark(-3000, 5000, "m3", boatLength));
         marks.add(new Mark(2400, 5000, "m4", boatLength));
 
-        boatLength = localBoat.getHeight();
         tickcnt = 0;
 
     }
@@ -54,9 +58,6 @@ public class Course {
 
         if (playing) {
             for (Sailboat b : boats) {
-                if(b == null){
-                    System.out.println("null boat b");
-                }
                 b.move(windSpeed, currentSpeed);
                 for (Mark m : marks) {
                     if (b.hitMark(m)) {
@@ -69,7 +70,6 @@ public class Course {
                     }
                 }
                 for (Sailboat bb : boats) {
-                    System.out.println("null boat bb");
                     if (!b.equals(bb)) {
                         b.overlap(bb, tickcnt);
                         b.windward(bb);
@@ -83,7 +83,6 @@ public class Course {
         }
 
     }
-
 
     private void assignPenalty(Sailboat a, Sailboat b) {
         if ((a.isManuvering() && !b.isManuvering())) {
@@ -122,38 +121,46 @@ public class Course {
         localBoat.adjustRudder(d);
     }
 
-    public void clearRudder(){
-        localBoat.clearRudder();
-    }
+    public void clearRudder(){ localBoat.clearRudder(); }
 
     public Sailboat localBoat() { return localBoat; }
 
-    public  void addBoat(Sailboat b){ boats.add(b); }
-
-    public  void update(String n, float x, float y, float angle, float sailTrim, float rudderAngle, int id){
+    public  void update(String n, float x, float y, float angle, float sailTrim, float rudderAngle, int id, boolean star){
+        System.out.println("attempting to update boats,");
+        boolean found = false;
         for(Sailboat b : boats){
+            System.out.println("compare: "+b.id() +" " + id);
             if(b.id() == id){
-                b.update(n,  x,  y,  angle,  sailTrim,  rudderAngle,  id);
+                System.out.println("boat update collision - good");
+                b.update(n,  x,  y,  angle,  sailTrim,  rudderAngle,  id, star);
+                found = true;
             }
+        }
+        if(!found){
+            Sailboat s = new Sailboat(sailBoatCount, n, t);
+            sailBoatCount++;
+            s.update(n,x,y,angle,sailTrim,rudderAngle,id, star);
+            boats.add(s);
+            System.out.println("boat added, boats size:"+boats.size());
         }
     }
 
     public void draw(SpriteBatch batch, ShapeRenderer shapes){
-        System.out.println(boats);
+        //System.out.println(boats);
         for (Mark m : marks) {
-            shapes.circle(m.getX(), m.getY(), boatLength * 2);
-            batch.draw(m.img, m.getX() - m.getRadius(), m.getY() - m.getRadius(), m.getWidth(), m.getHeight());
+            shapes.circle(m.getX(), m.getY(), boatLength*2);
+            batch.draw(t.markTexture(), m.getX() - t.markWidth()/2, m.getY() - t.markWidth()/2, t.markWidth(), t.markWidth());
         }
         for (Committee m : committees) {
             shapes.circle(m.getX(), m.getY(), boatLength * 2);
-            batch.draw(m.img, m.getX() - m.getWidth()/2, m.getY() - m.getHeight()/2, m.getWidth(), m.getHeight());
+            batch.draw(t.committeeTexture(), m.getX() - t.committeeWidth()/2, m.getY() - t.committeeHeight()/2, t.committeeWidth(), t.committeeHeight());
             //m.drawOutline(shapes);
         }
         for (Sailboat b : boats) {
             if(b == null){
                 System.out.println("NULL BOAT NULL BOAT NULL BOAT NULL BOAT NULL BOAT NULL BOAT");
             }
-            batch.draw(b.img, b.getX(), b.getY(), b.getWidth() / 2, b.getHeight() / 2, b.getWidth(), b.getHeight(), 1, 1, (float) b.getAngle(), 0, 0, b.img.getWidth(), b.img.getHeight(), false, false);
+            batch.draw(t.sailBoatTexture(), b.getX(), b.getY(), t.sailBoatWidth() / 2, t.sailBoatHeight()/ 2, t.sailBoatWidth(), t.sailBoatHeight(), 1, 1, (float) b.getAngle(), 0, 0, (int) t.sailBoatWidth(), (int) t.sailBoatHeight(), false, false);
             b.drawSail(shapes);
             b.drawWindshadow(shapes);
             //b.drawOutline(shapes);
@@ -185,12 +192,11 @@ public class Course {
     }
 
     public void sendLocation(){
-        //counter++;
+        //System.out.print("sending location:  ");
         try {
                 WarpController.getInstance().sendGameUpdate(localBoat.getArray().toString());
-            //}
         } catch (Exception e) {
-            // exception in sendLocation
+            System.out.println("exception sending location (Course)");
         }
     }
 

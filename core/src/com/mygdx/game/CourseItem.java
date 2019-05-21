@@ -8,13 +8,12 @@ public abstract class CourseItem {
     private float px;
     private float py;
     private String name;
-    protected Texture img;
 
     public CourseItem(float x, float y, String n) {
         this.px = x;
         this.py = y;
         this.name = n;
-        img = new Texture(Gdx.files.internal(n+".png"));
+        //img = new Texture(Gdx.files.internal(n+".png"));
     }
 
     public void adjustPosition(float x, float y){
@@ -36,6 +35,7 @@ public abstract class CourseItem {
         return Math.round(py);
     }
 
+    /*
     public float getWidth() {
         return img.getWidth();
     }
@@ -43,7 +43,7 @@ public abstract class CourseItem {
     public float getHeight() {
         return img.getHeight();
     }
-
+*/
 
     public String getName() {
         return name;

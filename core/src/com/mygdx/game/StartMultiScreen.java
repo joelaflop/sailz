@@ -20,16 +20,16 @@ import java.util.Arrays;
 
 public class StartMultiScreen implements Screen, WarpListener {
     Game game;
-    OrthographicCamera camera;
-    SpriteBatch batcher;
-    ShapeRenderer shapes;
-    Rectangle backBounds;
-    Vector3 touchPoint;
+    private OrthographicCamera camera;
+    private SpriteBatch batcher;
+    private ShapeRenderer shapes;
+    private Rectangle backBounds;
+    private Vector3 touchPoint;
     FreeTypeFontGenerator.FreeTypeFontParameter parameter;
     FreeTypeFontGenerator generator;
-    BitmapFont font, font24;
+    private BitmapFont font, font24;
 
-    float xOffset = 0;
+    private float xOffset = 0;
 
     private final String[] tryingToConnect = {"Connecting","to AppWarp"};
     private final String[] waitForOtherUser = {"Waiting for","other user"};
@@ -51,9 +51,11 @@ public class StartMultiScreen implements Screen, WarpListener {
         batcher = new SpriteBatch();
         shapes = new ShapeRenderer();
         xOffset = 80;
+        font = new BitmapFont(Gdx.files.internal("bitmapfont/Amble-Regular-26.fnt"));
+
         WarpController.getInstance().setListener(this);
 
-        font = new BitmapFont(Gdx.files.internal("bitmapfont/Amble-Regular-26.fnt"));
+
     }
 
     @Override
@@ -93,7 +95,7 @@ public class StartMultiScreen implements Screen, WarpListener {
 
     }
 
-    public void update(){
+    private void update(){
         if (Gdx.input.justTouched()) {
             camera.unproject(touchPoint.set(Gdx.input.getX(), Gdx.input.getY(), 0));
 
@@ -101,12 +103,11 @@ public class StartMultiScreen implements Screen, WarpListener {
                 //Assets.playSound(Assets.clickSound);
                 game.setScreen(new MainMenuScreen(game));
                 WarpController.getInstance().handleLeave();
-                return;
             }
         }
     }
 
-    public void printMessage(BitmapFont font, SpriteBatch hud){
+    private void printMessage(BitmapFont font, SpriteBatch hud){
         //System.out.println(Arrays.toString(msg));
         font.draw(hud, Arrays.toString(msg), 100 , 200);
     }
@@ -148,7 +149,7 @@ public class StartMultiScreen implements Screen, WarpListener {
 
     @Override
     public void onGameUpdateReceived(String message) {
-
+        System.out.println("                 onGameUpdateReceived - startScreen --> bad");
     }
 
     @Override

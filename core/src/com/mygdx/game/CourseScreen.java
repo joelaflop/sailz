@@ -6,6 +6,7 @@ import com.badlogic.gdx.*;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
@@ -32,16 +33,27 @@ public class CourseScreen implements Screen, WarpListener {
     Rectangle backBounds;
     Vector3 touchPoint;
     boolean firstTime;
+    TextureData t;
+
 
     public CourseScreen(Game game, StartMultiScreen prevScreen){
         firstTime = true;
+
         this.game = game;
         this.prevScreen = prevScreen;
+
+        Texture sailboatTexture = new Texture(Gdx.files.internal("g1.png"));
+        Texture markTexture = new Texture(Gdx.files.internal("m1.png"));
+        Texture committeeTexture = new Texture(Gdx.files.internal("start.png"));
+
+        t = new TextureData(sailboatTexture.getWidth(), sailboatTexture.getHeight(), markTexture.getWidth(), markTexture.getHeight(), committeeTexture.getWidth(), committeeTexture.getHeight(), sailboatTexture, markTexture, committeeTexture);
+
+        course = new Course(5, 0, t);
         camera = new OrthographicCamera(16000, 8000);
         hudcam = new OrthographicCamera(1600, 800);
         backBounds = new Rectangle(0, 760, 40, 40);
         touchPoint = new Vector3();
-        course = new Course(5, 0);
+
 
         batch = new SpriteBatch();
         shapes = new ShapeRenderer();
@@ -63,8 +75,6 @@ public class CourseScreen implements Screen, WarpListener {
         Label label2 = new Label("True Type Font (.ttf) - Gdx FreeType", labelStyle);
         label2.setSize(100, 100);
         label2.setPosition(50, 50);
-
-        course = new Course(5, 0);
 
         camera = new OrthographicCamera();
         camera.setToOrtho(false, 16000, 8000);
@@ -95,6 +105,8 @@ public class CourseScreen implements Screen, WarpListener {
         WarpController.getInstance().setListener(this);
         //WarpClient.initialize("1e1541bdd6353bcbaa6786382bbf35c41376ffa43077dc4e0a95f94ae4f92a0d",
         //"d7a29066ee8b392aa5a6eaba080a7f19cb3383fdd34d69037980e9b0158c3dfc");
+
+
     }
     @Override
     public void show() {
@@ -111,7 +123,7 @@ public class CourseScreen implements Screen, WarpListener {
         Gdx.gl.glClearColor(1, 1, 1, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
-        drawAll();
+
 
         if (Gdx.input.justTouched()) {
             hudcam.unproject(touchPoint.set(Gdx.input.getX(), Gdx.input.getY(), 0));
@@ -133,7 +145,7 @@ public class CourseScreen implements Screen, WarpListener {
         if (Gdx.input.isKeyPressed(Input.Keys.ENTER)) {
             course.jibe();
         }
-        if (Gdx.input.isKeyPressed(Input.Keys.BACKSLASH)) {
+        if (Gdx.input.isKeyPressed(Input.Keys.P)) {
             course.localBoat().properCourse();
         }
         if (Gdx.input.isKeyPressed(Input.Keys.SHIFT_RIGHT)) {
@@ -158,7 +170,15 @@ public class CourseScreen implements Screen, WarpListener {
             camera.zoom += .01;
         }
 
-        course.updateCourse(playing);
+        try {
+            drawAll();
+            course.updateCourse(playing);
+        } catch(Exception e){
+            System.out.println("---------------------------------there was an exception rendering" );
+            e.printStackTrace();
+            batch.end();
+            shapes.end();
+        }
         course.sendLocation();
     }
 
@@ -225,41 +245,25 @@ public class CourseScreen implements Screen, WarpListener {
 
     @Override
     public void onGameUpdateReceived(String message) {
-        if(firstTime){
-            firstTime = false;
-            /*
-            try {
-                JSONObject data = new JSONObject(message);
-                String n = data.getString("n");
-                int id = data.getInt("id");
-                float x = (float)data.getDouble("x");
-                float y = (float)data.getDouble("y");
-                float angle = (float)data.getDouble("angle");
-                float sailTrim = (float)data.getDouble("sailTrim");
-                float rudderAngle = (float)data.getDouble("rudderAngle");
-                float width = (float)data.getDouble("width");
-                float height = (float)data.getDouble("height");
-                course.addBoat(new Sailboat(n));
-                System.out.println("added boat: "+n);
-            } catch (Exception e) {
-                // exception in onMoveNotificationReceived
-            }
-            */
-        }
         try {
+            System.out.println("onGameUpdateReceived - CourseScreen");
             JSONObject data = new JSONObject(message);
-            String n = data.getString("n");
-            int id = data.getInt("id");
-            float x = (float)data.getDouble("x");
-            float y = (float)data.getDouble("y");
-            float angle = (float)data.getDouble("angle");
-            float sailTrim = (float)data.getDouble("sailTrim");
-            float rudderAngle = (float)data.getDouble("rudderAngle");
-            float width = (float)data.getDouble("width");
-            float height = (float)data.getDouble("height");
-            course.update(n,  x,  y,  angle,  sailTrim,  rudderAngle,  id);
+             String n = data.getString("n");
+             int id = data.getInt("id");
+             float x = (float)data.getDouble("x");
+             float y = (float)data.getDouble("y");
+             float angle = (float)data.getDouble("angle");
+             float sailTrim = (float)data.getDouble("sailTrim");
+             float rudderAngle = (float)data.getDouble("rudderAngle");
+             //float width = (float)data.getDouble("width");
+             //float height = (float)data.getDouble("height");
+            boolean star = data.getBoolean("starboard");
+            System.out.println(id);
+            course.update(n,  x,  y,  angle,  sailTrim,  rudderAngle,  id, star);
         } catch (Exception e) {
+            System.out.println("caught an exception while updating courseScreen");
             // exception in onMoveNotificationReceived
         }
+
     }
 }
