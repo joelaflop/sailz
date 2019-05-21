@@ -155,8 +155,8 @@ public class WarpController {
 	}
 	
 	public void onGetLiveRoomInfo(String[] liveUsers){
-		log("onGetLiveRoomInfo: "+liveUsers.length);
 		if(liveUsers!=null){
+			log("onGetLiveRoomInfo: "+liveUsers.length);
 			if(liveUsers.length==2){
 				startGame();
 				System.out.println("game started");
